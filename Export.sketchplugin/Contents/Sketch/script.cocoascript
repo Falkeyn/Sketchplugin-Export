@@ -1,0 +1,162 @@
+@import 'sandbox.js'
+@import 'sandbox-sketch-utils.js'
+
+function alert(msg, title) {
+  title = title || "alert";
+  var app = [NSApplication sharedApplication];
+  [app displayDialog:msg withTitle:title];
+}
+
+function report(count) {
+  if (count == 0) {
+    alert("", "Ничего не сохранено");
+  } else {
+    alert("Сохранено картинок — "+ count, "Экспорт завершен");
+  }  
+}
+
+function sanitize(name) {
+  return name.replace(/й/g,"и").replace(/\s/g,"_");
+}
+
+function fileFromString(filename,the_string) {
+  var path = [@"" stringByAppendingString:filename],
+      str = [@"" stringByAppendingString:the_string];
+  [str writeToFile:path atomically:true encoding:NSUTF8StringEncoding error:null];
+}
+
+function getFileFolder(doc){
+  var file_url = [doc fileURL],
+  file_path = [file_url path],
+  file_folder = file_path.split([doc displayName])[0];
+  return file_folder+"/";
+}
+
+
+function saveSelected(context) {
+  var doc = context.document;
+  var selection = context.selection;
+  var pagename = sanitize([[doc currentPage] name]);
+ 
+  var exportPath = getFileFolder(doc);
+  var count = 0;
+
+  for (var i=0; i < [selection count]; i++) 
+  {
+    var item = selection[i];
+    if([item className] != "MSArtboardGroup") continue;
+
+    [doc saveArtboardOrSlice:item toFile: exportPath + pagename + "/" + [item name] + ".png"];
+    count++;
+  }
+  return count;
+}
+
+function saveAll(context) {
+  var doc = context.document;
+  var pages = [doc pages];
+  var curPage = [doc currentPage];
+  var count = 0;
+
+  for (var p = 0; p < [pages count]; p++) 
+  {
+    var page = [pages objectAtIndex:p];
+    var pagename = sanitize([page name]);
+    if (pagename.charAt(0) == "-") continue;
+
+    [doc setCurrentPage:page];
+
+    count += savePage(context);
+  }
+
+  [doc setCurrentPage:curPage];
+
+  return count;
+}
+
+function savePage(context) {
+  var doc = context.document;
+  var exportPath = getFileFolder(doc);
+  var count = 0;
+  var page = [doc currentPage];
+
+  var pagename = sanitize([page name]);
+  var artboards = [page artboards];
+
+  var namesList = new Array();
+  namesList.push("*../"+[doc displayName]);
+
+  for (var a=[artboards count]-1; a >= 0; a--) 
+  {
+    var artboard = [artboards objectAtIndex:a];
+    var artboardname = sanitize([artboard name]);
+    if (artboardname.charAt(0) == "-") continue;
+
+    [doc saveArtboardOrSlice:artboard toFile:exportPath + pagename + "/" + artboardname + ".png"];
+    namesList.push(artboardname);
+    count++;
+  }
+  
+  fileFromString(exportPath + pagename + "/" + "_index.txt", namesList.join("\n"));  
+  return count;
+}
+
+// Command "Export Current Page"
+function exportPage(context) {
+  var doc = context.document;
+  var selection = context.selection;
+  var count = 0;
+
+  // Проверим, вдруг выбраны артборды, тогда мы сохраним только их
+  var sel = false;
+  if ([selection count] > 0) {
+    var item = selection[0];
+    if ([item className] == "MSArtboardGroup") {
+      sel = true;
+    }
+  }
+
+  function exporting() { 
+    if (sel) count = saveSelected(context);
+    else count = savePage(context); 
+  }
+  
+  if (sel) [doc showMessage: "Сохраняю выбранные артборды..."];
+  else [doc showMessage: "Сохраняю все артборды на этой странице..."];
+
+  if (in_sandbox()) sandboxAccess.accessFilePath_withBlock_persistPermission(getFileFolder(doc), exporting, true);
+  else exporting();
+
+  report(count);
+}
+
+// Command "Export All Pages"
+function exportAll(context) {
+  var doc = context.document;
+  var count = 0;
+
+  function exporting() { count = saveAll(context); }
+
+  [doc showMessage: "Сохраняю все ардборды со всех страниц этого документа..."];
+
+  if (in_sandbox()) sandboxAccess.accessFilePath_withBlock_persistPermission(getFileFolder(doc), exporting, true);
+  else exporting();
+
+  report(count);
+}
+
+// Command "Export Selected Artboards"
+function exportSelected(context) {
+  var doc = context.document;
+  var count = 0;
+
+  function exporting() { count = saveSelected(context); }
+
+  [doc showMessage: "Сохраняю только выбранные артборды..."];
+
+  if (in_sandbox()) sandboxAccess.accessFilePath_withBlock_persistPermission(getFileFolder(doc), exporting, true);
+  else exporting();
+
+  report(count);
+}
+

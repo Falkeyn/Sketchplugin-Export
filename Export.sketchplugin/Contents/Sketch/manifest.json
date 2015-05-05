@@ -1,0 +1,38 @@
+{
+  "author" : "Falkeyn",
+  "commands" : [
+    {
+      "script" : "script.cocoascript",
+      "handler" : "exportPage",
+      "shortcut" : "cmd e",
+      "name" : "Current Page",
+      "identifier" : "exportPage"
+    },
+    {
+      "script" : "script.cocoascript",
+      "handler" : "exportAll",
+      "shortcut" : "cmd ctrl e",
+      "name" : "All Pages",
+      "identifier" : "exportAll"
+    },
+    {
+      "script" : "script.cocoascript",
+      "handler" : "exportSelected",
+      "shortcut" : "",
+      "name" : "Selected Artboards",
+      "identifier" : "exportSelected"
+    }
+  ],
+  "menu": {
+    "items": [
+      "exportPage",
+      "exportAll",
+      "exportSelected"
+    ]
+  },
+  "identifier" : "com.sketch.export",
+  "version" : "1.0",
+  "description" : "Export plugin for Kontur.UI",
+  "authorEmail" : "falkeyn@yandex.ru",
+  "name" : "Export"
+}
