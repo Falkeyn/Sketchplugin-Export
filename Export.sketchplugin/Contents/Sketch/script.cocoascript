@@ -19,6 +19,15 @@ function sanitize(name) {
   return name.replace(/й/g,"и").replace(/\s/g,"_");
 }
 
+function getIndex(array, value) {
+  var res = -1;
+  for (var i = 0; i < array.length; i++) {
+    if (array[i] == value) { res = i }
+  }
+  return res;
+}
+
+
 function fileFromString(filename,the_string) {
   var path = [@"" stringByAppendingString:filename],
       str = [@"" stringByAppendingString:the_string];
@@ -80,23 +89,32 @@ function savePage(context) {
   var count = 0;
   var page = [doc currentPage];
 
-  var pagename = sanitize([page name]);
+  var pagename = sanitize([page name])+"/";
+  if (pagename.charAt(0) == "*") pagename = "";
+
   var artboards = [page artboards];
 
   var namesList = new Array();
-  namesList.push("*../"+[doc displayName]);
+  //namesList.push("*../"+[doc displayName]);
 
   for (var a=[artboards count]-1; a >= 0; a--) 
   {
     var artboard = [artboards objectAtIndex:a];
-    var artboardname = sanitize([artboard name]);
+    var artboardname = [artboard name];
     if (artboardname.charAt(0) == "-") continue;
 
-    [doc saveArtboardOrSlice:artboard toFile:exportPath + pagename + "/" + artboardname + ".png"];
+    while (getIndex(namesList, sanitize(artboardname)) >= 0) {
+      artboardname += " copy";
+      [artboard setName:artboardname];
+    }
+
+    artboardname = sanitize(artboardname);
+
+    [doc saveArtboardOrSlice:artboard toFile:exportPath + pagename + artboardname + ".png"];
     namesList.push(artboardname);
     count++;
   }
-  
+
   fileFromString(exportPath + pagename + "/" + "_index.txt", namesList.join("\n"));  
   return count;
 }
