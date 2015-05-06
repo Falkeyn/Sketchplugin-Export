@@ -7,8 +7,8 @@ function alert(msg, title) {
   [app displayDialog:msg withTitle:title];
 }
 
-function report(count) {
-  if (count == 0) {
+function report(namesList) {
+  if (namesList.length == 0) {
     alert("", "Ничего не сохранено");
   } else {
     alert("Сохранено картинок — "+ count, "Экспорт завершен");
@@ -45,27 +45,35 @@ function getFileFolder(doc){
 function saveSelected(context) {
   var doc = context.document;
   var selection = context.selection;
+  
   var pagename = sanitize([[doc currentPage] name]);
- 
-  var exportPath = getFileFolder(doc);
-  var count = 0;
+  if (pagename.charAt(0) == "*") pagename = "";
 
-  for (var i=0; i < [selection count]; i++) 
+  var exportPath = getFileFolder(doc);
+  //var count = 0;
+
+  var namesList = new Array();
+
+  for (var i=[selection count]-1; i >=0 ; i--) 
   {
     var item = selection[i];
+    var itemname = sanitize([item name]) + ".png";
     if([item className] != "MSArtboardGroup") continue;
 
-    [doc saveArtboardOrSlice:item toFile: exportPath + pagename + "/" + [item name] + ".png"];
-    count++;
+    [doc saveArtboardOrSlice:item toFile: exportPath + pagename + "/" + itemname];
+    namesList.push(itemname);
+    //count++;
   }
-  return count;
+  return namesList;
 }
 
 function saveAll(context) {
   var doc = context.document;
   var pages = [doc pages];
   var curPage = [doc currentPage];
-  var count = 0;
+  //var count = 0;
+
+  var namesList = new Array();
 
   for (var p = 0; p < [pages count]; p++) 
   {
@@ -75,18 +83,20 @@ function saveAll(context) {
 
     [doc setCurrentPage:page];
 
-    count += savePage(context);
+    var c = savePage(context).length;
+    //count += c;
+    namesList.push(pagename + " ("+c+")");
   }
 
   [doc setCurrentPage:curPage];
 
-  return count;
+  return namesList;
 }
 
 function savePage(context) {
   var doc = context.document;
   var exportPath = getFileFolder(doc);
-  var count = 0;
+  //var count = 0;
   var page = [doc currentPage];
 
   var pagename = sanitize([page name])+"/";
@@ -108,22 +118,23 @@ function savePage(context) {
       [artboard setName:artboardname];
     }
 
-    artboardname = sanitize(artboardname);
+    artboardname = sanitize(artboardname)+".png";
 
-    [doc saveArtboardOrSlice:artboard toFile:exportPath + pagename + artboardname + ".png"];
+    [doc saveArtboardOrSlice:artboard toFile:exportPath + pagename + artboardname];
     namesList.push(artboardname);
-    count++;
+    //count++;
   }
 
   fileFromString(exportPath + pagename + "/" + "_index.txt", namesList.join("\n"));  
-  return count;
+  return namesList;
 }
 
 // Command "Export Current Page"
 function exportPage(context) {
   var doc = context.document;
   var selection = context.selection;
-  var count = 0;
+  //var count = 0;
+  var namesList;
 
   // Проверим, вдруг выбраны артборды, тогда мы сохраним только их
   var sel = false;
@@ -135,8 +146,8 @@ function exportPage(context) {
   }
 
   function exporting() { 
-    if (sel) count = saveSelected(context);
-    else count = savePage(context); 
+    if (sel) namesList = saveSelected(context);
+    else namesList = savePage(context); 
   }
   
   if (sel) [doc showMessage: "Сохраняю выбранные артборды..."];
@@ -145,36 +156,52 @@ function exportPage(context) {
   if (in_sandbox()) sandboxAccess.accessFilePath_withBlock_persistPermission(getFileFolder(doc), exporting, true);
   else exporting();
 
-  report(count);
+  var foldertxt = "";
+  var pagename = sanitize([[doc currentPage] name]);
+  if (pagename.charAt(0) == "*") { foldertxt = "\n\nВ папку с исходником" }
+  else { foldertxt = "\n\nВ папку:\n📁 "+ pagename}
+  
+
+  if (namesList.length == 0) alert("На странице не найдено ни одного артборда для сохранения","Ничего не сохранено");
+  else alert("Сохранены картинки:\n📄 " + namesList.join("\n📄 ") + foldertxt, "Экспорт завершен");
 }
 
 // Command "Export All Pages"
 function exportAll(context) {
   var doc = context.document;
-  var count = 0;
+  //var count = 0;
+  var namesList;
 
-  function exporting() { count = saveAll(context); }
+  function exporting() { namesList = saveAll(context); }
 
   [doc showMessage: "Сохраняю все ардборды со всех страниц этого документа..."];
 
   if (in_sandbox()) sandboxAccess.accessFilePath_withBlock_persistPermission(getFileFolder(doc), exporting, true);
   else exporting();
 
-  report(count);
+  if (namesList.length == 0) alert("Во всем документе не найдено ни одного артборда для сохранения","Ничего не сохранено");
+  else alert("Сохранены папки с картинками:\n📁 " + namesList.join("\n📁 "), "Экспорт завершен");
 }
 
 // Command "Export Selected Artboards"
 function exportSelected(context) {
   var doc = context.document;
-  var count = 0;
+  //var count = 0;
+  var namesList;
 
-  function exporting() { count = saveSelected(context); }
+  function exporting() { namesList = saveSelected(context); }
 
   [doc showMessage: "Сохраняю только выбранные артборды..."];
 
   if (in_sandbox()) sandboxAccess.accessFilePath_withBlock_persistPermission(getFileFolder(doc), exporting, true);
   else exporting();
 
-  report(count);
+  var foldertxt = "";
+  var pagename = sanitize([[doc currentPage] name]);
+  if (pagename.charAt(0) == "*") { foldertxt = "\n\nВ папку с исходником" }
+  else { foldertxt = "\n\nВ папку:\n📁 "+ pagename}  
+
+  if (namesList.length == 0) alert("Не выбрано ни одного артборда","Ничего не сохранено");
+  else alert("Сохранены картинки:\n📄 " + namesList.join("\n📄 ") + foldertxt, "Экспорт завершен");
 }
 
