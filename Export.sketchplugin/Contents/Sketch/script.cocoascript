@@ -38,7 +38,7 @@ function getFileFolder(doc){
   var file_url = [doc fileURL],
   file_path = [file_url path],
   file_folder = file_path.split([doc displayName])[0];
-  return file_folder+"/";
+  return file_folder;
 }
 
 
@@ -102,6 +102,16 @@ function savePage(context) {
   var pagename = sanitize([page name])+"/";
   if (pagename.charAt(0) == "*") pagename = "";
 
+  // Пытаемся удалить предыдущую версию папки. 
+  // Главное чтобы папка не оказалась корневой для исходника, а то он похерится
+  var path = exportPath + pagename;
+  if ((path != exportPath) && (path != exportPath+"/")) { 
+    var file_manager = [NSFileManager defaultManager];
+    [file_manager removeItemAtPath:path error:nil];  
+  }
+
+
+
   var artboards = [page artboards];
 
   var namesList = new Array();
@@ -129,6 +139,8 @@ function savePage(context) {
   return namesList;
 }
 
+
+
 // Command "Export Current Page"
 function exportPage(context) {
   var doc = context.document;
@@ -149,7 +161,7 @@ function exportPage(context) {
     if (sel) namesList = saveSelected(context);
     else namesList = savePage(context); 
   }
-  
+
   if (sel) [doc showMessage: "Сохраняю выбранные артборды..."];
   else [doc showMessage: "Сохраняю все артборды на этой странице..."];
 
